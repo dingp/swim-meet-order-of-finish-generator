@@ -29,7 +29,7 @@ It is copied in this repo as:
 
 ## Requirements
 
-The script uses command-line tools that are already available on this machine:
+The script uses command-line tools that should already be available on this machine:
 
 - `python3`
 - `pdftotext`
