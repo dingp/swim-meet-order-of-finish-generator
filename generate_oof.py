@@ -67,6 +67,14 @@ def clean_event_name(name: str) -> str:
     return name
 
 
+def should_skip_event(event_name: str) -> bool:
+    normalized_name = event_name.lower()
+    return (
+        "freestyle" in normalized_name
+        and re.search(r"\b(?:500|1000|1650)\b", normalized_name) is not None
+    )
+
+
 def parse_events(report_text: str) -> list[Event]:
     session_number: int | None = None
     events: list[Event] = []
@@ -85,6 +93,8 @@ def parse_events(report_text: str) -> list[Event]:
 
         event_number = int(match.group(1))
         event_name = clean_event_name(match.group(2))
+        if should_skip_event(event_name):
+            continue
         heats = int(match.group(4))
         events.append(
             Event(

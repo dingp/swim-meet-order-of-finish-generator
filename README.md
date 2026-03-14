@@ -68,5 +68,6 @@ python3 oof_generator/generate_oof.py \
 ## Notes
 
 - The script extracts each event's session number, event number, event name, and heat count.
+- The script skips `500 Freestyle`, `1000 Freestyle`, and `1650 Freestyle` events because those events usually use a separate order-of-finish form that tracks finish order by length within a heat.
 - It places `Total Heats: N` on the same line as the event name, aligned to the right.
 - Intermediate files such as the generated `.tex` file and rendered template image are written to `--workdir`.
