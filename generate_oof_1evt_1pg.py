@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,6 +26,12 @@ class Event:
     event_number: int
     event_name: str
     heats: int
+
+
+@dataclass
+class ParseResult:
+    events: list[Event]
+    skipped_events: list[Event]
 
 
 def run_pdftotext(pdf_path: Path) -> str:
@@ -71,13 +78,14 @@ def should_skip_event(event_name: str) -> bool:
     normalized_name = event_name.lower()
     return (
         "freestyle" in normalized_name
-        and re.search(r"\b(?:500|1000|1650)\b", normalized_name) is not None
+        and re.search(r"\b(?:500|800|1000|1500|1650)\b", normalized_name) is not None
     )
 
 
-def parse_events(report_text: str) -> list[Event]:
+def parse_events(report_text: str) -> ParseResult:
     session_number: int | None = None
     events: list[Event] = []
+    skipped_events: list[Event] = []
     event_line = re.compile(r"^\S+\s+(\d+)\s+(.*?)\s+(\d+)\s+(\d+)\s+u\s+.*$")
 
     for raw_line in report_text.splitlines():
@@ -93,22 +101,22 @@ def parse_events(report_text: str) -> list[Event]:
 
         event_number = int(match.group(1))
         event_name = clean_event_name(match.group(2))
-        if should_skip_event(event_name):
-            continue
         heats = int(match.group(4))
-        events.append(
-            Event(
-                session_number=session_number,
-                event_number=event_number,
-                event_name=event_name,
-                heats=heats,
-            )
+        event = Event(
+            session_number=session_number,
+            event_number=event_number,
+            event_name=event_name,
+            heats=heats,
         )
+        if should_skip_event(event_name):
+            skipped_events.append(event)
+            continue
+        events.append(event)
 
     if not events:
         raise RuntimeError("No events found in session report.")
 
-    return events
+    return ParseResult(events=events, skipped_events=skipped_events)
 
 
 def tex_escape(text: str) -> str:
@@ -127,7 +135,48 @@ def tex_escape(text: str) -> str:
     return "".join(replacements.get(ch, ch) for ch in text)
 
 
-def build_tex(events: list[Event], template_image: Path) -> str:
+
+
+def build_summary_page(events: list[Event], skipped_events: list[Event]) -> str:
+    lines = [
+        r"\clearpage",
+        r"\pagestyle{plain}",
+        r"\section*{Generation Summary}",
+        rf"Generated events: {len(events)}\\",
+        rf"Skipped long-distance freestyle events: {len(skipped_events)}\\",
+        r"\textit{Note: Total heats may not be accurate if the session report is a pre-scratch session report.}\\",
+        r"\subsection*{Generated Events}",
+        r"\begin{multicols}{2}",
+        r"\begin{itemize}",
+    ]
+
+    for event in events:
+        lines.append(
+            rf"  \item S{event.session_number} E{event.event_number}: {tex_escape(event.event_name)} (Heats: {event.heats})"
+        )
+
+    lines.extend([
+        r"\end{itemize}",
+        r"\end{multicols}",
+    ])
+
+    if skipped_events:
+        lines.extend([
+            r"\subsection*{Skipped Long-Distance Freestyle Events}",
+            r"\begin{itemize}",
+        ])
+        for event in skipped_events:
+            lines.append(
+                rf"  \item S{event.session_number} E{event.event_number}: {tex_escape(event.event_name)} (Heats: {event.heats})"
+            )
+        lines.append(r"\end{itemize}")
+    else:
+        lines.append(r"\subsection*{Skipped Long-Distance Freestyle Events}")
+        lines.append(r"None.")
+
+    return "\n".join(lines)
+
+def build_tex(events: list[Event], skipped_events: list[Event], template_image: Path) -> str:
     pages: list[str] = []
     image_path = template_image.as_posix()
 
@@ -155,9 +204,11 @@ def build_tex(events: list[Event], template_image: Path) -> str:
             r"\usepackage{graphicx}",
             r"\usepackage{tikz}",
             r"\usepackage{grffile}",
+            r"\usepackage{multicol}",
             r"\pagestyle{empty}",
             r"\begin{document}",
             *pages,
+            build_summary_page(events, skipped_events),
             r"\end{document}",
         ]
     )
@@ -193,7 +244,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--template",
         type=Path,
-        default=Path("order_of_finish.pdf"),
+        default=Path(__file__).resolve().parent / "templates" / "OOF_template_one_event_per_page.pdf",
         help="Path to the order-of-finish template PDF.",
     )
     parser.add_argument(
@@ -205,8 +256,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--workdir",
         type=Path,
-        default=Path("."),
-        help="Directory for intermediate TeX and template image files.",
+        default=None,
+        help="Directory for intermediate TeX and template image files. Defaults to a temporary directory.",
     )
     return parser.parse_args()
 
@@ -216,32 +267,41 @@ def main() -> None:
     report_pdf = args.report.resolve()
     template_pdf = args.template.resolve()
     output_pdf = args.output.resolve()
-    workdir = args.workdir.resolve()
+    temp_workdir: tempfile.TemporaryDirectory[str] | None = None
+    if args.workdir is None:
+        temp_workdir = tempfile.TemporaryDirectory(prefix=f"{output_pdf.stem}_")
+        workdir = Path(temp_workdir.name)
+    else:
+        workdir = args.workdir.resolve()
 
     if not report_pdf.exists():
         raise FileNotFoundError(f"Session report not found: {report_pdf}")
     if not template_pdf.exists():
         raise FileNotFoundError(f"Template PDF not found: {template_pdf}")
-    workdir.mkdir(parents=True, exist_ok=True)
+    try:
+        workdir.mkdir(parents=True, exist_ok=True)
 
-    output_tex = workdir / f"{output_pdf.stem}.tex"
-    template_image = workdir / f"{template_pdf.stem}_template.png"
+        output_tex = workdir / f"{output_pdf.stem}.tex"
+        template_image = workdir / f"{template_pdf.stem}_template.png"
 
-    report_text = run_pdftotext(report_pdf)
-    events = parse_events(report_text)
-    ensure_template_image(template_pdf, template_image)
-    tex_source = build_tex(events, template_image)
-    output_tex.write_text(tex_source, encoding="utf-8")
-    compile_pdf(output_tex)
+        report_text = run_pdftotext(report_pdf)
+        parse_result = parse_events(report_text)
+        ensure_template_image(template_pdf, template_image)
+        tex_source = build_tex(parse_result.events, parse_result.skipped_events, template_image)
+        output_tex.write_text(tex_source, encoding="utf-8")
+        compile_pdf(output_tex)
 
-    compiled_pdf = output_tex.with_suffix(".pdf")
-    if not compiled_pdf.exists():
-        raise RuntimeError("Expected output PDF was not created.")
+        compiled_pdf = output_tex.with_suffix(".pdf")
+        if not compiled_pdf.exists():
+            raise RuntimeError("Expected output PDF was not created.")
 
-    if compiled_pdf != output_pdf:
-        output_pdf.write_bytes(compiled_pdf.read_bytes())
+        if compiled_pdf != output_pdf:
+            output_pdf.write_bytes(compiled_pdf.read_bytes())
 
-    print(f"Generated {output_pdf} with {len(events)} pages.")
+        print(f"Generated {output_pdf} with {len(parse_result.events)} event pages plus 1 summary page.")
+    finally:
+        if temp_workdir is not None:
+            temp_workdir.cleanup()
 
 
 if __name__ == "__main__":
