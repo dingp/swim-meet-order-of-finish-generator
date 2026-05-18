@@ -19,7 +19,7 @@ COPY README.md ./
 COPY generate_oof_1evt_1pg.py ./
 COPY generate_oof_2evt_1pg.py ./
 COPY templates ./templates
-COPY example ./example
+COPY examples ./examples
 
 ENTRYPOINT ["python3"]
 CMD ["generate_oof_2evt_1pg.py", "--help"]
