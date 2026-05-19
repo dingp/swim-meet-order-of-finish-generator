@@ -9,20 +9,28 @@ on:
       - Dockerfile
       - .dockerignore
       - .gitignore
+      - app.py
+      - requirements.txt
+      - web_templates/**
       - generate_oof_1evt_1pg.py
       - generate_oof_2evt_1pg.py
       - templates/**
       - example/**
+      - examples/**
       - .github/workflows/build-docker-image.yaml
   pull_request:
     paths:
       - Dockerfile
       - .dockerignore
       - .gitignore
+      - app.py
+      - requirements.txt
+      - web_templates/**
       - generate_oof_1evt_1pg.py
       - generate_oof_2evt_1pg.py
       - templates/**
       - example/**
+      - examples/**
       - .github/workflows/build-docker-image.yaml
   workflow_dispatch:
 
@@ -62,12 +70,44 @@ jobs:
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: false
+          load: true
+          tags: oof-generator:ci
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test and integration test container
+        run: |
+          docker run -d --rm --name oof-generator-smoke -p 18000:8000 oof-generator:ci
+          trap 'docker logs oof-generator-smoke; docker stop oof-generator-smoke' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18000/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18000/healthz >/dev/null
+          curl --fail --silent \
+            -o /tmp/generated.pdf \
+            -F "template_key=one_event_per_page" \
+            -F "session_report=@examples/session_report.pdf;type=application/pdf" \
+            http://127.0.0.1:18000/generate
+          test -s /tmp/generated.pdf
+          file /tmp/generated.pdf | grep -q 'PDF document'
+
+      - name: Build and push Docker image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

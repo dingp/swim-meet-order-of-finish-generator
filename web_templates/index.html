@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Order Of Finish Generator</title>
+    <style>
+      :root {
+        --bg: #f6f1e7;
+        --panel: #fffdf8;
+        --ink: #1f1a14;
+        --muted: #6b6255;
+        --accent: #0f766e;
+        --accent-2: #d97706;
+        --border: #d8cfc2;
+        --error-bg: #fff1f2;
+        --error-border: #f5c2c7;
+        --error-ink: #9f1239;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(217,119,6,0.12), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(15,118,110,0.14), transparent 24%),
+          var(--bg);
+        color: var(--ink);
+      }
+      .wrap {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+      }
+      .card {
+        width: min(760px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: 0 18px 50px rgba(31, 26, 20, 0.08);
+        overflow: hidden;
+      }
+      .hero {
+        padding: 2rem 2rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, rgba(15,118,110,0.08), rgba(217,119,6,0.08));
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+      .hero p {
+        margin: 0.9rem 0 0;
+        color: var(--muted);
+        max-width: 42rem;
+      }
+      form {
+        padding: 1.5rem 2rem 2rem;
+        display: grid;
+        gap: 1.25rem;
+      }
+      label {
+        display: grid;
+        gap: 0.45rem;
+        font-weight: 600;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+      }
+      .error {
+        margin: 0;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--error-border);
+        border-radius: 12px;
+        background: var(--error-bg);
+        color: var(--error-ink);
+        font-weight: 600;
+      }
+      input[type="file"], select {
+        width: 100%;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 0.95rem 1.4rem;
+        background: linear-gradient(135deg, var(--accent), #115e59);
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        justify-self: start;
+      }
+      button:hover { filter: brightness(1.03); }
+      .notes {
+        margin: 0;
+        padding-left: 1.1rem;
+        color: var(--muted);
+      }
+      .notes li + li { margin-top: 0.35rem; }
+      @media (max-width: 640px) {
+        .hero, form { padding-inline: 1.2rem; }
+        button { width: 100%; justify-self: stretch; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="hero">
+          <h1>Order Of Finish Generator</h1>
+          <p>Upload a session report PDF, choose the output layout, and download a prefilled order-of-finish PDF.</p>
+        </div>
+        <form action="/generate" method="post" enctype="multipart/form-data">
+          {% if error %}
+          <p class="error">{{ error }}</p>
+          {% endif %}
+
+          <label>
+            Session Report PDF
+            <span class="hint">Maximum upload size: {{ max_upload_mb }} MB</span>
+            <input type="file" name="session_report" accept="application/pdf,.pdf" required>
+          </label>
+
+          <label>
+            Template Layout
+            <select name="template_key" required>
+              {% for key, item in generators.items() %}
+              <option value="{{ key }}">{{ item.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <button type="submit">Generate PDF</button>
+
+          <ul class="notes">
+            <li>The app uses the built-in PDF templates bundled in the container.</li>
+            <li>The generated PDF includes a summary page listing generated events and skipped long-distance freestyle events.</li>
+            <li>Total heats may not be accurate if the session report is a pre-scratch session report.</li>
+          </ul>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

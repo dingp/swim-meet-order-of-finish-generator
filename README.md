@@ -117,33 +117,80 @@ Build the image from this directory:
 docker build -t oof-generator .
 ```
 
-Run the one-event-per-page generator:
+Run the web app container:
+
+```bash
+docker run --rm -p 8000:8000 oof-generator
+```
+
+Then open `http://localhost:8000`.
+
+Use Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Then open `http://localhost:8000`.
+
+Stop it with:
+
+```bash
+docker compose down
+```
+
+You can still use the container to run the CLI scripts directly:
 
 ```bash
 docker run --rm \
   -v "$PWD":/work \
   -w /work \
-  oof-generator /app/generate_oof_1evt_1pg.py \
+  oof-generator python3 /app/generate_oof_1evt_1pg.py \
   --report /work/example/session_report.pdf \
   --output /work/example/prefilled_order_of_finish_1evt_1pg.pdf
 ```
 
-Run the two-events-per-page generator:
-
 ```bash
 docker run --rm \
   -v "$PWD":/work \
   -w /work \
-  oof-generator /app/generate_oof_2evt_1pg.py \
+  oof-generator python3 /app/generate_oof_2evt_1pg.py \
   --report /work/example/session_report_2.pdf \
   --output /work/example/prefilled_order_of_finish_2evt_1pg.pdf
 ```
 
 Notes:
 
-- The image already contains the required command-line tools and the default templates under `/app/templates`.
-- Mount your working directory with `-v` so the generated PDFs are written back to the host.
-- You can still pass `--template` and `--workdir` explicitly if you want to override the defaults.
+- The image starts the Flask app with Gunicorn on port `8000`.
+- Mount your working directory with `-v` only if you want to run the CLI scripts inside the container.
+- The web app itself returns the generated PDF directly in the browser and does not need a mounted output directory.
+
+## Web App
+
+A minimal Flask web app is included for browser-based use and container deployment.
+
+Endpoints:
+
+- `GET /`: upload form
+- `POST /generate`: generate and download the PDF
+- `GET /healthz`: health check
+
+Run locally after installing Python dependencies:
+
+```bash
+pip install -r requirements.txt
+python3 app.py
+```
+
+Then open `http://localhost:8000`.
+
+The web interface lets users:
+
+- upload a session report PDF
+- choose one-event-per-page or two-events-per-page output
+- download the generated order-of-finish PDF
+
+The web app uses the bundled templates and writes each request to a temporary working directory that is deleted after the response is created.
 
 ## Summary Page
 

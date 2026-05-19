@@ -1,0 +1,12 @@
+services:
+  oof-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oof-generator:local
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      MAX_UPLOAD_MB: "20"
+    restart: unless-stopped
