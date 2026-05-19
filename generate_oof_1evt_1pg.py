@@ -140,7 +140,9 @@ def tex_escape(text: str) -> str:
 def build_summary_page(events: list[Event], skipped_events: list[Event]) -> str:
     lines = [
         r"\clearpage",
+        r"\newgeometry{top=0.8in,bottom=0.8in,left=0.7in,right=0.7in}",
         r"\pagestyle{plain}",
+        r"\vspace*{0.3in}",
         r"\section*{Generation Summary}",
         rf"Generated events: {len(events)}\\",
         rf"Skipped long-distance freestyle events: {len(skipped_events)}\\",
@@ -173,6 +175,13 @@ def build_summary_page(events: list[Event], skipped_events: list[Event]) -> str:
     else:
         lines.append(r"\subsection*{Skipped Long-Distance Freestyle Events}")
         lines.append(r"None.")
+
+    lines.extend([
+        r"\vspace*{\fill}",
+        r"\restoregeometry",
+        r"\pagestyle{empty}",
+        r"\clearpage",
+    ])
 
     return "\n".join(lines)
 
