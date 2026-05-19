@@ -1,9 +1,6 @@
 services:
   oof-generator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: oof-generator:local
+    image: ghcr.io/dingp/swim-meet-order-of-finish-generator:latest
     ports:
       - "8000:8000"
     environment:

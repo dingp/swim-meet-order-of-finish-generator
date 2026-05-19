@@ -111,24 +111,30 @@ python3 generate_oof_2evt_1pg.py \
 
 ## Docker
 
-Build the image from this directory:
+Use the published multi-arch image:
 
 ```bash
-docker build -t oof-generator .
+docker pull ghcr.io/dingp/swim-meet-order-of-finish-generator:latest
 ```
 
 Run the web app container:
 
 ```bash
-docker run --rm -p 8000:8000 oof-generator
+docker run --rm -p 8000:8000 ghcr.io/dingp/swim-meet-order-of-finish-generator:latest
 ```
 
 Then open `http://localhost:8000`.
 
+The `latest` tag is a multi-arch image and should work on both:
+
+- `linux/arm64` hosts, including Apple Silicon Macs running Docker Desktop
+- `linux/amd64` / x86-64 hosts
+
 Use Docker Compose:
 
 ```bash
-docker compose up --build
+docker compose pull
+docker compose up
 ```
 
 Then open `http://localhost:8000`.
@@ -145,7 +151,7 @@ You can still use the container to run the CLI scripts directly:
 docker run --rm \
   -v "$PWD":/work \
   -w /work \
-  oof-generator python3 /app/generate_oof_1evt_1pg.py \
+  ghcr.io/dingp/swim-meet-order-of-finish-generator:latest python3 /app/generate_oof_1evt_1pg.py \
   --report /work/example/session_report.pdf \
   --output /work/example/prefilled_order_of_finish_1evt_1pg.pdf
 ```
@@ -154,7 +160,7 @@ docker run --rm \
 docker run --rm \
   -v "$PWD":/work \
   -w /work \
-  oof-generator python3 /app/generate_oof_2evt_1pg.py \
+  ghcr.io/dingp/swim-meet-order-of-finish-generator:latest python3 /app/generate_oof_2evt_1pg.py \
   --report /work/example/session_report_2.pdf \
   --output /work/example/prefilled_order_of_finish_2evt_1pg.pdf
 ```
@@ -162,6 +168,7 @@ docker run --rm \
 Notes:
 
 - The image starts the Flask app with Gunicorn on port `8000`.
+- If you want to rebuild from source locally instead, run `docker build -t oof-generator .` from this directory and substitute `oof-generator` in the commands above.
 - Mount your working directory with `-v` only if you want to run the CLI scripts inside the container.
 - The web app itself returns the generated PDF directly in the browser and does not need a mounted output directory.
 
@@ -194,13 +201,14 @@ The web app uses the bundled templates and writes each request to a temporary wo
 
 ## Summary Page
 
-Both scripts append a final summary page to the generated PDF.
+Both scripts place the summary before the order-of-finish pages in the generated PDF.
 
 The summary page includes:
 
 - a two-column list of generated events and their heats
 - a list of skipped long-distance freestyle events
 - a note that total heats may not be accurate if the session report is a pre-scratch session report
+- automatic overflow onto additional summary pages when needed
 
 Long-distance freestyle events currently skipped are:
 
