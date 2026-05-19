@@ -1,0 +1,109 @@
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/dingp/swim-meet-order-of-finish-generator
+  pullPolicy: IfNotPresent
+  tag: latest
+
+imagePullSecrets: []
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources: {}
+
+env:
+  port: 8000
+  maxUploadMb: 20
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+ingress:
+  enabled: true
+  name: swim-meet-order-of-finish-generator
+  className: nginx
+  annotations: {}
+  userDomains: []
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: true
+    secretName: tls-cert
+    hosts: []
+
+tlsAcme:
+  enabled: true
+  email: ""
+  image:
+    repository: ghcr.io/dingp/acme
+    tag: latest
+    pullPolicy: Always
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+  resources: {}
+  service:
+    type: ClusterIP
+    port: 8080
+  cert:
+    secretName: tls-cert
+    createPlaceholder: true
+  kubeconfig:
+    secretName: kubeconfig
+  cronJob:
+    schedule: "5 12 1 */2 *"
+    concurrencyPolicy: Allow
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 1
+    restartPolicy: Never
+  webServer:
+    existing: false
+    deploymentName: existing-websrv
+    serviceName: ""
+    claimName: pvc-existing-webroot
+    webrootPath: /www
+    replicaCount: 1
+    storageClassName: ""
+    storageSize: 1Gi
+    accessMode: ReadWriteMany
+    livenessProbe:
+      httpGet:
+        path: /
+        port: http
+    readinessProbe:
+      httpGet:
+        path: /
+        port: http

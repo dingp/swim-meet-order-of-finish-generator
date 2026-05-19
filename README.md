@@ -172,6 +172,20 @@ Notes:
 - Mount your working directory with `-v` only if you want to run the CLI scripts inside the container.
 - The web app itself returns the generated PDF directly in the browser and does not need a mounted output directory.
 
+## Helm
+
+A Helm chart is included at `charts/swim-meet-order-of-finish-generator`.
+
+It deploys:
+
+- the web app `Deployment` and `Service`
+- an `Ingress`
+- the ACME helper PVC, web server, placeholder TLS secret, and renewal `CronJob` used to obtain and refresh the ingress TLS certificate
+
+For the development cluster deployment in namespace `oof`, use `charts/swim-meet-order-of-finish-generator/values-development.yaml`.
+
+See `charts/swim-meet-order-of-finish-generator/README.md` for the install command and the remaining values you need to set before installing it.
+
 ## Web App
 
 A minimal Flask web app is included for browser-based use and container deployment.

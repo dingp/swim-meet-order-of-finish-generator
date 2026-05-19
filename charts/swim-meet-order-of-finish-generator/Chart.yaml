@@ -1,0 +1,6 @@
+apiVersion: v2
+name: swim-meet-order-of-finish-generator
+description: Helm chart for deploying the swim meet order of finish generator web app with ACME-managed ingress TLS.
+type: application
+version: 0.1.0
+appVersion: "latest"
