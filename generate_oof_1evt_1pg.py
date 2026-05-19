@@ -207,8 +207,8 @@ def build_tex(events: list[Event], skipped_events: list[Event], template_image: 
             r"\usepackage{multicol}",
             r"\pagestyle{empty}",
             r"\begin{document}",
-            *pages,
             build_summary_page(events, skipped_events),
+            *pages,
             r"\end{document}",
         ]
     )
