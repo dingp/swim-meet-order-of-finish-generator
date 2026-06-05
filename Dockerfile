@@ -23,6 +23,7 @@ COPY README.md ./
 COPY app.py ./
 COPY generate_oof_1evt_1pg.py ./
 COPY generate_oof_2evt_1pg.py ./
+COPY session_report_parser.py ./
 COPY web_templates ./web_templates
 COPY templates ./templates
 COPY examples ./examples
