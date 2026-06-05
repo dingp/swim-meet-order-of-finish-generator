@@ -10,6 +10,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from session_report_parser import parse_event_line
+
 
 PAGE_LAYOUTS = {
     "front": {
@@ -164,7 +166,6 @@ def parse_events(report_text: str) -> ParseResult:
     session_number: int | None = None
     events: list[Event] = []
     skipped_events: list[Event] = []
-    event_line = re.compile(r"^\S+\s+(\d+)\s+(.*?)\s+(\d+)\s+(\d+)\s+u\s+.*$")
 
     for raw_line in report_text.splitlines():
         line = raw_line.rstrip()
@@ -173,13 +174,12 @@ def parse_events(report_text: str) -> ParseResult:
             session_number = int(session_match.group(1))
             continue
 
-        match = event_line.match(line)
-        if not match or session_number is None:
+        parsed_event = parse_event_line(line)
+        if parsed_event is None or session_number is None:
             continue
 
-        event_number = int(match.group(1))
-        event_name = clean_event_name(match.group(2))
-        heats = int(match.group(4))
+        event_number, raw_event_name, heats = parsed_event
+        event_name = clean_event_name(raw_event_name)
         event = Event(
             session_number=session_number,
             event_number=event_number,
